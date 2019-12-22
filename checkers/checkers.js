@@ -21,10 +21,17 @@ class Board
     RP,E,RP,E,RP,E,RP,E|
     E,RP,E,RP,E,RP,E,RP`
     */
+
+    /*
+    a friend is a piece that is of the color that is making the move
+    an enemy is a piece that is of the color that is NOT making the move
+    on the current turn
+    */
     constructor(position)
     {
         this.isBlackTurn = true;
         this.pieceCapturingInARow = null;
+        this.numberOfMovesWithoutProgress = 0;
         this.rows = [];
         if (!position)
         {
@@ -57,32 +64,90 @@ class Board
         }
         else
         {
-            rows = position.split("|");
+            let rows = position.split("|");
             for (let row = 0; row < 8; row++)
             {
                 this.rows[row] = rows[row].split(",");
             }
         }
     }
-    //TODO ALL
-    //implementing the rules!
     makeMove(move)
     {
+        let originalTurn = this.isBlackTurn;
+        let response = { isLegalMove: false, isGameOver: false, result: null };
         if (this.isLegalMove(move))
         {
-            board.rows[move.destinationRow][move.destinationColumn] = board.rows[move.startRow][move.startColumn];
-            board.rows[move.startRow][move.startColumn] = "E";
-            return { isLegalMove: true, isGameOver: false, result: null };
+            response.isLegalMove = true;
+            this.actuallyMakeTheMove(move);
+            let gameResult = this.getGameResult();
+            if (gameResult != "not over")
+            {
+                response.isGameOver = true;
+                response.result = gameResult;
+                board.isBlackTurn = originalTurn;
+            }
+        }
+        return response;
+    }
+    getGameResult()
+    {
+        let friends = this.getAllFriends();
+        let enemies = this.getAllEnemies();
+        if (enemies.length == 0)
+            return this.isBlackTurn ? "B" : "R";
+        if (friends.length == 0)
+            return this.isBlackTurn ? "R" : "B";
+        if (!this.doesOneOfThePiecesHaveALegalMove(friends))
+            return this.isBlackTurn ? "R" : "B";
+        if (this.numberOfMovesWithoutProgress == 31)
+            return "D";
+        return "not over";
+    }
+    doesOneOfThePiecesHaveALegalMove(pieces)
+    {
+        for (let piece of pieces)
+        {
+            if (this.getPieceCapturingMoves(piece.row, piece.column).length != 0 || this.getPieceNonCapturingMoves(piece.row, piece.column).length != 0)
+                return true;
+        }
+        return false;
+    }
+    actuallyMakeTheMove(move)
+    {
+        let originalTurn = this.isBlackTurn;
+        if (!this.isKing(move.startRow, move.startColumn))
+            this.numberOfMovesWithoutProgress = 0;
+        board.rows[move.destinationRow][move.destinationColumn] = board.rows[move.startRow][move.startColumn];
+        board.rows[move.startRow][move.startColumn] = "E";
+        if (move.isCapturingMove())
+        {
+            this.numberOfMovesWithoutProgress = 0;
+            let capturedPieceSquare = move.getCapturedPieceSquare();
+            board.rows[capturedPieceSquare.row][capturedPieceSquare.column] = "E";
+            if (this.getPieceCapturingMoves(move.destinationRow, move.destinationColumn).length == 0)
+            {
+                this.isBlackTurn = !this.isBlackTurn;
+                this.pieceCapturingInARow = null;
+            }
+            else
+            {
+                this.pieceCapturingInARow = new Square(move.destinationRow, move.destinationColumn);
+            }
         }
         else
         {
-            return { isLegalMove: false, isGameOver: false, result: null };
+            this.isBlackTurn = !this.isBlackTurn;
         }
+        if (this.promoteToKings()) //returns wheter or not a king was promoted
+        {
+            this.isBlackTurn = !originalTurn;
+            this.pieceCapturingInARow = null;
+        }
+        this.numberOfMovesWithoutProgress++;
     }
     isLegalMove(move)
     {
-        return true;//just to make all moves legal
-        if(move.isMoveInMovesArray(this.getLegalMoves()))
+        if (move.isMoveInMovesArray(this.getLegalMoves()))
             return true;
         else
             return false;
@@ -90,51 +155,226 @@ class Board
     getLegalMoves()
     {
         let legalMoves = [];
+        let pieceMoves;
         let piecesThatCanCapture = this.getPiecesThatCanCapture();
+        let piecesThatAreFriends = this.getAllFriends();
         if (this.pieceCapturingInARow)
         {
-            legalMoves.push(this.getPieceLegalMoves(this.pieceCapturingInARow.row, this.pieceCapturingInARow.column));
+            pieceMoves = this.getPieceCapturingMoves(this.pieceCapturingInARow.row, this.pieceCapturingInARow.column);
+            for (let move of pieceMoves)
+                legalMoves.push(move);
             return legalMoves;
         }
         else if (piecesThatCanCapture.length > 0)
         {
-            for(let piece of piecesThatCanCapture)
+            for (let piece of piecesThatCanCapture)
             {
-                legalMoves.push(this.getPieceLegalMoves(piece.row, piece.column));
+                pieceMoves = this.getPieceCapturingMoves(piece.row, piece.column);
+                for (let move of pieceMoves)
+                    legalMoves.push(move);
             }
             return legalMoves;
         }
         else
         {
-
+            for (let piece of piecesThatAreFriends)
+            {
+                pieceMoves = this.getPieceNonCapturingMoves(piece.row, piece.column);
+                for (let move of pieceMoves)
+                    legalMoves.push(move);
+            }
+            return legalMoves;
         }
     }
-    getPieceLegalMoves(row, column)
+    getPieceCapturingMoves(row, column)
     {
-        if (this.getPiece(row, column) == "B")
+        let moves = [];
+        let rowForward;//equals to plus or minus 1, depending on what color is making the current move
+        if (this.isRed(row, column))
+            rowForward = 1;
+        else
+            rowForward = -1;
+
+        if (this.isEnemy(row + rowForward, column + 1) && this.isEmpty(row + rowForward * 2, column + 2))
         {
-
+            moves.push(new Move(row, column, row + rowForward * 2, column + 2));
         }
+        if (this.isEnemy(row + rowForward, column - 1) && this.isEmpty(row + rowForward * 2, column - 2))
+        {
+            moves.push(new Move(row, column, row + rowForward * 2, column - 2));
+        }
+        if (this.isKing(row, column))
+        {
+            if (this.isEnemy(row - rowForward, column + 1) && this.isEmpty(row - rowForward * 2, column + 2))
+            {
+                moves.push(new Move(row, column, row - rowForward * 2, column + 2));
+            }
+            if (this.isEnemy(row - rowForward, column - 1) && this.isEmpty(row - rowForward * 2, column - 2))
+            {
+                moves.push(new Move(row, column, row - rowForward * 2, column - 2));
+            }
+        }
+        return moves;
+    }
+    getPieceNonCapturingMoves(row, column)
+    {
+        let moves = [];
+        let rowForward;//equals to plus or minus 1, depending on what color is making the current move
+        if (this.isRed(row, column))
+            rowForward = 1;
+        else
+            rowForward = -1;
 
+        if (this.isEmpty(row + rowForward, column + 1))
+        {
+            moves.push(new Move(row, column, row + rowForward, column + 1));
+        }
+        if (this.isEmpty(row + rowForward, column - 1))
+        {
+            moves.push(new Move(row, column, row + rowForward, column - 1));
+        }
+        if (this.isKing(row, column))
+        {
+            if (this.isEmpty(row - rowForward, column + 1))
+            {
+                moves.push(new Move(row, column, row - rowForward, column + 1));
+            }
+            if (this.isEmpty(row - rowForward, column - 1))
+            {
+                moves.push(new Move(row, column, row - rowForward, column - 1));
+            }
+        }
+        return moves;
     }
     getPiecesThatCanCapture()
     {
+        let piecesThatCanCapture = [];
+        let friends = this.getAllFriends();
+        for (let friend of friends)
+        {
+            let rowForward;//equals to plus or minus 1, depending on what color is making the current move
+            if (this.isRed(friend.row, friend.column))
+                rowForward = 1;
+            else
+                rowForward = -1;
 
+            if (this.isEnemy(friend.row + rowForward, friend.column + 1) && this.isEmpty(friend.row + rowForward * 2, friend.column + 2))
+            {
+                piecesThatCanCapture.push(friend);
+            }
+            else if (this.isEnemy(friend.row + rowForward, friend.column - 1) && this.isEmpty(friend.row + rowForward * 2, friend.column - 2))
+            {
+                piecesThatCanCapture.push(friend);
+            }
+            else if (this.isKing(friend.row, friend.column))
+            {
+                if (this.isEnemy(friend.row - rowForward, friend.column + 1) && this.isEmpty(friend.row - rowForward * 2, friend.column + 2))
+                {
+                    piecesThatCanCapture.push(friend);
+                }
+                else if (this.isEnemy(friend.row - rowForward, friend.column - 1) && this.isEmpty(friend.row - rowForward * 2, friend.column - 2))
+                {
+                    piecesThatCanCapture.push(friend);
+                }
+            }
+        }
+        return piecesThatCanCapture;
     }
-    getAllPieces()
+    promoteToKings()
     {
-
+        for (let column = 0; column < 8; column++)
+        {
+            if (this.getPiece(0, column) == "BP")
+            {
+                this.rows[0][column] = "BK";
+                return true;
+            }
+            if (this.getPiece(7, column) == "RP")
+            {
+                this.rows[7][column] = "RK";
+                return true;
+            }
+        }
+        return false;
+    }
+    isSquareInBounds(row, column)
+    {
+        if (row >= 0 && row < 8 && column >= 0 && row < 8)
+            return true;
+        else
+            return false;
+    }
+    getAllFriends()
+    {
+        let friends = [];
+        for (let row = 0; row < 8; row++)
+        {
+            for (let column = 0; column < 8; column++)
+            {
+                if (this.isFriend(row, column))
+                    friends.push(new Square(row, column));
+            }
+        }
+        return friends;
+    }
+    getAllEnemies()
+    {
+        let enemies = [];
+        for (let row = 0; row < 8; row++)
+        {
+            for (let column = 0; column < 8; column++)
+            {
+                if (this.isEnemy(row, column))
+                    enemies.push(new Square(row, column));
+            }
+        }
+        return enemies;
     }
     getPiece(row, column)
     {
         return this.rows[row][column];
     }
+    isKing(row, column)
+    {
+        if (this.getPiece(row, column) == "BK" || this.getPiece(row, column) == "RK")
+            return true;
+    }
     isEmpty(row, column)
     {
-        if (this.rows[row][column] == "E")
+        if (this.isSquareInBounds(row, column) && this.rows[row][column] == "E")
             return true;
         else
             return false;
+    }
+    isRed(row, column)
+    {
+        if (this.getPiece(row, column) == "RP" || this.getPiece(row, column) == "RK")
+            return true;
+        else
+            return false;
+    }
+    isBlack(row, column)
+    {
+        if (this.getPiece(row, column) == "BP" || this.getPiece(row, column) == "BK")
+            return true;
+        else
+            return false;
+    }
+    isEnemy(row, column)
+    {
+        if (!this.isSquareInBounds(row, column))
+            return false;
+        if (this.isBlackTurn)
+            return this.isRed(row, column);
+        else
+            return this.isBlack(row, column);
+    }
+    isFriend(row, column)
+    {
+        if (this.isBlackTurn)
+            return this.isBlack(row, column);
+        else
+            return this.isRed(row, column);
     }
 }
 Board.prototype.getImageUrlByName = (name) =>
@@ -173,14 +413,14 @@ class Move
     }
     isMoveInMovesArray(movesArray)
     {
-        for(let move in movesArray)
+        for (let move of movesArray)
         {
-            if(this.equals(move))
+            if (this.equals(move))
                 return true;
         }
         return false;
     }
-    equals(otherMove)
+    equals(other)
     {
         if (this.startRow == other.startRow &&
             this.startColumn == other.startColumn &&
@@ -192,8 +432,22 @@ class Move
         else
             return false;
     }
+    isCapturingMove()
+    {
+        if (Math.abs(this.startRow - this.destinationRow) == 2)
+            return true;
+        else
+            return false;
+    }
+    getCapturedPieceSquare()
+    {
+        if (!this.isCapturingMove())
+            return null;
+        let row = (this.startRow + this.destinationRow) / 2;
+        let column = (this.startColumn + this.destinationColumn) / 2;
+        return new Square(row, column);
+    }
 }
-//#region the class Square is deprecated!
 class Square
 {
     constructor(row, column)
@@ -214,7 +468,6 @@ class Square
             return false;
     }
 }
-//#endregion
 
 //#region global variables
 let board;
@@ -247,10 +500,10 @@ function drop()
     {
         let destinationCords = dropSquare.id.split(",");
         let startCords = movingPieceOriginalParent.id.split(",");
-        let destinationRow = destinationCords[0];
-        let destinationColumn = destinationCords[1];
-        let startRow = startCords[0];
-        let startColumn = startCords[1];
+        let destinationRow = parseInt(destinationCords[0]);
+        let destinationColumn = parseInt(destinationCords[1]);
+        let startRow = parseInt(startCords[0]);
+        let startColumn = parseInt(startCords[1]);
         let move = new Move(startRow, startColumn, destinationRow, destinationColumn);
         transferMovingPieceBackToSquare(movingPieceOriginalParent);
         tryToMakeMoveAndUpdateBoard(move);
@@ -330,26 +583,32 @@ function tryToMakeMoveAndUpdateBoard(move)
     let response = board.makeMove(move);
     if (response.isLegalMove)
     {
+        loadPosition(board);
         if (response.isGameOver)
         {
+            let callback = loadStartPosition;
             switch (response.result)
             {
-                case "R": alert("Red won!"); break;
-                case "B": alert("Black won!"); break;
-                case "D": alert("Draw!"); break;
-                default: alert("Error! result not found"); break;
+                case "R": delayedAlert("Red won!", callback); break;
+                case "B": delayedAlert("Black won!", callback); break;
+                case "D": delayedAlert("Draw!", callback); break;
+                default: delayedAlert("Error! result not found", callback); break;
             }
-            loadStartPosition();
-        }
-        else
-        {
-            loadPosition(board);
         }
     }
     else
     {
-        alert("illegal move! try again");
+
     }
+}
+function delayedAlert(message, callback)
+{
+    setTimeout(() =>
+    {
+        alert(message);
+        if (callback)
+            callback();
+    }, 0);
 }
 function loadPageLayout()
 {
@@ -439,9 +698,39 @@ function loadPosition(board)
             }
         }
     }
+    displayWhosMoveItIs(board);
+}
+function displayWhosMoveItIs(board)
+{
+    if (board.isBlackTurn)
+    {
+        document.querySelector("#black").style.backgroundColor = "black";
+        document.querySelector("#red").style.backgroundColor = "white";
+
+    }
+    else
+    {
+        document.querySelector("#black").style.backgroundColor = "white";
+        document.querySelector("#red").style.backgroundColor = "red";
+    }
 }
 function loadStartPosition()
 {
+    let boardString = `
+    E,E,E,E,E,E,E,E|
+    BP,E,E,E,BP,E,E,E|
+    E,E,E,E,E,E,E,E|
+    E,E,E,E,E,E,E,E|
+    E,E,E,E,E,E,E,E|
+    E,E,E,E,RP,E,E,E|
+    E,E,E,E,E,E,E,E|
+    E,E,E,E,E,E,E,E`
+        .replace(/\s/g, '');
+    //board = new Board(boardString);
     board = new Board();
     loadPosition(board);
+}
+function restartGame()
+{
+    loadStartPosition();
 }

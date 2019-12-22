@@ -1,11 +1,11 @@
 #board
 {
-    height:500px;
-    width:500px;
-    
+    height:100%;
+    width:50%;
     margin:0;
     padding:0;
     border: 2px black solid;
+    float: left;
 }
 .square
 {
@@ -54,4 +54,51 @@
 {
     margin:0;
     padding:0;
+}
+#moveIndicator
+{
+    width:100px;
+    height:100%;
+    float: left;
+    border: black solid 2px;
+    margin-left: 5px;
+}
+#red
+{
+    width:100%;
+    height:50%;
+    background-color: red;
+}
+#black
+{
+    width:100%;
+    height:50%;
+    background-color: black;
+}
+#mainContainer
+{
+    height: 500px;
+    width: 1000px;
+}
+#rulesList
+{
+    text-align: left;
+    width: 79%;
+    color: red;
+    float: left;
+}
+#sideBar
+{
+    margin-left: 5px;
+    float: left;
+    width:20%;
+    height: 100%;
+    border: 2px solid black;
+    text-align: center;
+}
+#restartButton
+{
+    font-weight: 600;
+    margin-top: 50%;
+    padding:20px;
 }

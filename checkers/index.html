@@ -10,10 +10,23 @@
     <script src="checkers.js"></script>
 </head>
 <body onload="loadPageLayout();">
-<div id = "board">
-
-
-
+<h1><u>Checkers Game</u></h1>
+<div id = "mainContainer">
+    <div id = "board">
+    </div>
+    <div id = "moveIndicator">
+        <div id = "red"></div>
+        <div id = "black"></div>
+    </div>
+    <div id = "sideBar">
+        <ul id = "rulesList">
+            <h2><u>Rules of american checkers:</u></h2>
+            <li>kings move one square</li>
+            <li>only kings move and capture backwards</li>
+            <li>if you can capture, you must capture</li>
+        </ul>
+        <button onclick="restartGame();" id="restartButton">Restart Game</button>
+    </div>
 </div>
 </body>
 </html>
