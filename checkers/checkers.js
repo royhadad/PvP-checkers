@@ -612,7 +612,7 @@ function delayedAlert(message, callback)
 }
 function loadPageLayout()
 {
-    loadKingsImagesMomentery();
+    loadKingsImagesMomentery();//added
     let boardDiv = document.getElementById("board");
     let isDarkSquare = false;
     for (let row = 0; row < 8; row++)
