@@ -612,7 +612,7 @@ function delayedAlert(message, callback)
 }
 function loadPageLayout()
 {
-    loadKingsImagesMomentery();//added
+    loadKingsImagesInTheBackground();
     let boardDiv = document.getElementById("board");
     let isDarkSquare = false;
     for (let row = 0; row < 8; row++)
@@ -641,19 +641,17 @@ function loadPageLayout()
     }
     loadStartPosition();
 }
-function loadKingsImagesMomentery()
+function loadKingsImagesInTheBackground()
 {
-    for (let i = 0; i < 10; i++)
-    {
-        let body = document.getElementsByTagName("body")[0];
-        let img1 = document.createElement("img");
-        img1.src = "./storage/blackKing.png";
-        body.appendChild(img1);
-        body.removeChild(img1);
-        img1.src = "./storage/redKing.png";
-        body.appendChild(img1);
-        body.removeChild(img1);
-    }
+    let body = document.getElementsByTagName("body")[0];
+    let img1 = document.createElement("img");
+    let img2 = document.createElement("img");
+    img1.style.display = "none";
+    img2.style.display = "none";
+    img1.src = "./storage/blackKing.png";
+    body.appendChild(img1);
+    img2.src = "./storage/redKing.png";
+    body.appendChild(img2);
 }
 function loadPosition(board)
 {
