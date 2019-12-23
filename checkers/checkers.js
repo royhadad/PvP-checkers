@@ -643,14 +643,17 @@ function loadPageLayout()
 }
 function loadKingsImagesMomentery()
 {
-    let body = document.getElementsByTagName("body");
-    let img1 = document.createElement("img");
-    img1.src = "./storage/blackKing.png";
-    body.appendChild(img1);
-    body.removeChild(img1);
-    img1.src = "./storage/redKing.png";
-    body.appendChild(img1);
-    body.removeChild(img1);
+    for (let i = 0; i < 10; i++)
+    {
+        let body = document.getElementsByTagName("body")[0];
+        let img1 = document.createElement("img");
+        img1.src = "./storage/blackKing.png";
+        body.appendChild(img1);
+        body.removeChild(img1);
+        img1.src = "./storage/redKing.png";
+        body.appendChild(img1);
+        body.removeChild(img1);
+    }
 }
 function loadPosition(board)
 {
