@@ -612,6 +612,7 @@ function delayedAlert(message, callback)
 }
 function loadPageLayout()
 {
+    loadKingsImagesMomentery();
     let boardDiv = document.getElementById("board");
     let isDarkSquare = false;
     for (let row = 0; row < 8; row++)
@@ -639,6 +640,17 @@ function loadPageLayout()
         isDarkSquare = !isDarkSquare;
     }
     loadStartPosition();
+}
+function loadKingsImagesMomentery()
+{
+    let body = document.getElementsByTagName("body");
+    let img1 = document.createElement("img");
+    img1.src = "./storage/blackKing.png";
+    body.appendChild(img1);
+    body.removeChild(img1);
+    img1.src = "./storage/redKing.png";
+    body.appendChild(img1);
+    body.removeChild(img1);
 }
 function loadPosition(board)
 {
